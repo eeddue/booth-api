@@ -1,0 +1,138 @@
+const { Encrypt, Compare } = require("../helpers/Bcrypt");
+const GenarateCode = require("../helpers/GenerateCode");
+const { CreateToken } = require("../helpers/JwtTokens");
+const SendMail = require("../helpers/SendMail");
+const Code = require("../models/Code");
+const User = require("../models/User");
+
+const InviteUser = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (user)
+      return res
+        .status(400)
+        .json({ msg: "This email has been already taken." });
+
+    //create code and send it to user email
+    const code = GenarateCode();
+    await Code.deleteMany({ owner: email });
+    await Code.create({ code: Encrypt(code) });
+    await SendMail(
+      email,
+      "Verify your email.",
+      `Use this invitation code to verify your email. ${code} \n This code will expire in 30 minutes.`
+    );
+
+    return res.status(200).json({ msg: "Check your email." });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
+const Register = async (req, res) => {
+  const { first_name, last_name, username, email, avatar, password, country } =
+    req.body;
+  try {
+    if (
+      !first_name ||
+      !last_name ||
+      !username ||
+      !email ||
+      !avatar ||
+      !password ||
+      !country
+    )
+      return res.status(400).json({ msg: "All fields are required." });
+
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ msg: "Email already exists." });
+
+    user = await User.findOne({ username });
+    if (user)
+      return res
+        .status(400)
+        .json({ msg: "This username has already been taken." });
+
+    await User.create(req.body);
+    return res
+      .status(200)
+      .json({ msg: "You are now a member. Continue to login." });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
+const Login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) return res.status(400).json({ msg: "Invalid credentials." });
+
+    if (!Compare(user.password, password))
+      return res.status(400).json({ msg: "Invalid credentials." });
+
+    //return userId and jwt token
+    const token = CreateToken(user._id, "1w");
+    return res.status(200).json({ token, userId: user._id });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
+const ForgotPassword = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user)
+      return res.status(400).json({
+        msg: "Email doesn't exist. Enter email associated wiht your account.",
+      });
+
+    const code = GenarateCode();
+    await Code.deleteMany({ owner: req.body.email });
+    await Code.create({ code: Encrypt(code) });
+    await SendMail(
+      email,
+      "Verify it's you.",
+      `Use this to reset your password. ${code} \n This code will expire in 30 minutes. \n If you didn't request for this code, ignore the message, your account is safe.`
+    );
+
+    return res.status(200).json({ msg: "Check your email." });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
+const ResetPassword = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return;
+
+    await User.findOneAndUpdate({ email }, { password: Encrypt(password) });
+    return res
+      .status(200)
+      .json({ msg: "Password reset was successful. Continue to login." });
+  } catch (error) {
+    return res.status(200).json({ msg: "Check your email." });
+  }
+};
+
+const UpdateUser = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    await User.findByIdAndUpdate(userId, req.body);
+  } catch (error) {
+    return res.status(200).json({ msg: "Check your email." });
+  }
+};
+
+module.exports = {
+  InviteUser,
+  Register,
+  Login,
+  ForgotPassword,
+  ResetPassword,
+  UpdateUser,
+};
