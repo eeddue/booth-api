@@ -21,4 +21,4 @@ server.listen(8000, () => {
   console.log("server running");
 });
 
-module.exports = server;
+module.exports = app;
