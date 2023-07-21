@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
   res.send("Home page");
 });
 
-server.listen(8000, () => {
+app.listen(8000, () => {
   DbConnect();
   console.log("server running");
 });
