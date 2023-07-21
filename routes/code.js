@@ -7,7 +7,7 @@ router.post("/verify", async (req, res) => {
   const { email, code: bodyCode } = req.body;
   try {
     const code = await Code.findOne({ owner: email });
-    if (!code) return;
+    if (!code) return res.status(400).json({ msg: "No code found." });
 
     //compare user code and db code
     if (!Compare(code.code, bodyCode))

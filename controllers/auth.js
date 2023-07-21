@@ -86,14 +86,14 @@ const ForgotPassword = async (req, res) => {
     const user = await User.findOne({ email: req.body.email });
     if (!user)
       return res.status(400).json({
-        msg: "Email doesn't exist. Enter email associated wiht your account.",
+        msg: "Email doesn't exist. Enter the email associated with your account.",
       });
 
     const code = GenarateCode();
     await Code.deleteMany({ owner: req.body.email });
     await Code.create({ code: Encrypt(code) });
     await SendMail(
-      email,
+      req.body.email,
       "Verify it's you.",
       `Use this to reset your password. ${code} \n This code will expire in 30 minutes. \n If you didn't request for this code, ignore the message, your account is safe.`
     );
@@ -108,14 +108,14 @@ const ResetPassword = async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return;
+    if (!user) return res.status(400).json({ msg: "No account found" });
 
     await User.findOneAndUpdate({ email }, { password: Encrypt(password) });
     return res
       .status(200)
       .json({ msg: "Password reset was successful. Continue to login." });
   } catch (error) {
-    return res.status(200).json({ msg: "Check your email." });
+    return res.status(500).json({ msg: error.message });
   }
 };
 
@@ -124,7 +124,7 @@ const UpdateUser = async (req, res) => {
   try {
     await User.findByIdAndUpdate(userId, req.body);
   } catch (error) {
-    return res.status(200).json({ msg: "Check your email." });
+    return res.status(500).json({ msg: error.message });
   }
 };
 
