@@ -1,6 +1,5 @@
 const router = require("express").Router();
-const { Compare } = require("../helpers/Bcrypt");
-const CheckExpired = require("../helpers/CheckExpired");
+const { CheckCodeExpired } = require("../helpers/Jwt");
 const Code = require("../models/Code");
 
 router.post("/verify", async (req, res) => {
@@ -10,15 +9,18 @@ router.post("/verify", async (req, res) => {
     if (!code) return res.status(400).json({ msg: "No code found." });
 
     //compare user code and db code
-    if (!Compare(code.code, bodyCode))
+    const decoded = CheckCodeExpired(code.code);
+    if (decoded.code.toString() !== bodyCode)
       return res
         .status(400)
         .json({ msg: "Wrong code. Enter the code we sent to your email." });
 
-    //check if code is expired
-    if (CheckExpired()) {
+    // check if code is expired
+    if (Date.now() - decoded.expiresAt > 1800000) {
       await Code.deleteMany({ owner: email });
-      return res.status(400).json({ msg: "The code has already expred." });
+      return res
+        .status(400)
+        .json({ msg: "The code has already expred. Request for a new one." });
     }
 
     await Code.deleteMany({ owner: email });

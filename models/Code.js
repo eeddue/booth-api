@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const CodeSchema = new mongoose.Schema(
   {
-    code: Number,
-    owner: String
+    code: String,
+    owner: String,
   },
   { timestamps: true }
 );

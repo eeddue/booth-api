@@ -1,6 +1,6 @@
 const { Encrypt, Compare } = require("../helpers/Bcrypt");
 const GenarateCode = require("../helpers/GenerateCode");
-const { CreateToken } = require("../helpers/JwtTokens");
+const { CreateToken, CreateCodeToken } = require("../helpers/Jwt");
 const SendMail = require("../helpers/SendMail");
 const Code = require("../models/Code");
 const User = require("../models/User");
@@ -17,7 +17,10 @@ const InviteUser = async (req, res) => {
     //create code and send it to user email
     const code = GenarateCode();
     await Code.deleteMany({ owner: email });
-    await Code.create({ code: Encrypt(code) });
+    await Code.create({
+      code: CreateCodeToken({ code, expiresAt: Date.now() + 1800000, email }),
+      owner: email,
+    });
     await SendMail(
       email,
       "Verify your email.",
@@ -54,7 +57,11 @@ const Register = async (req, res) => {
         .status(400)
         .json({ msg: "This username has already been taken." });
 
-    await User.create(req.body);
+    await User.create({
+      ...req.body,
+      avatar: `https://ui-avatars.com/api/?name=${first_name}+${last_name}&&background=random&&size=128&color=fff`,
+    });
+
     return res
       .status(200)
       .json({ msg: "You are now a member. Continue to login." });
@@ -121,8 +128,13 @@ const ResetPassword = async (req, res) => {
 
 const UpdateUser = async (req, res) => {
   const { userId } = req.params;
+  const data = req.body;
   try {
-    await User.findByIdAndUpdate(userId, req.body);
+    if (data.pin) {
+      data.pin = Encrypt(data.pin);
+    }
+    const user = await User.findByIdAndUpdate(userId, data, { new: true });
+    return res.status(200).json({ msg: "Profile updated.", user });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
   }
