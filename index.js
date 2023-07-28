@@ -18,10 +18,6 @@ app.get("/", (req, res) => {
   );
 });
 
-app.get("/api/v1/auth/invite", (req, res) => {
-  res.send("invite");
-});
-
 app.use("/api/v1/auth", require("./routes/auth"));
 app.use("/api/v1/code", require("./routes/code"));
 app.use("/api/v1/users", VerifyToken, require("./routes/users"));
