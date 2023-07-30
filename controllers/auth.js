@@ -34,8 +34,16 @@ const InviteUser = async (req, res) => {
 };
 
 const Register = async (req, res) => {
-  const { first_name, last_name, username, email, avatar, password, country } =
-    req.body;
+  const {
+    first_name,
+    last_name,
+    username,
+    email,
+    avatar,
+    password,
+    country,
+    pin,
+  } = req.body;
   try {
     if (
       !first_name ||
@@ -44,7 +52,8 @@ const Register = async (req, res) => {
       !email ||
       !avatar ||
       !password ||
-      !country
+      !country ||
+      !pin
     )
       return res.status(400).json({ msg: "All fields are required." });
 
@@ -59,8 +68,15 @@ const Register = async (req, res) => {
 
     await User.create({
       ...req.body,
-      avatar: `https://ui-avatars.com/api/?name=${first_name}+${last_name}&&background=random&&size=128&color=fff`,
+      password: Encrypt(password),
+      pin: Encrypt(pin),
     });
+
+    await SendMail(
+      email,
+      "Welcome to BOOTH",
+      "Send, receive and withdraw money anywhere around the world. Continue to login."
+    );
 
     return res
       .status(200)
@@ -73,11 +89,13 @@ const Register = async (req, res) => {
 const Login = async (req, res) => {
   const { email, password } = req.body;
   try {
+    if (!email || !password) return res.sendStatus(404);
+
     const user = await User.findOne({ email });
 
     if (!user) return res.status(400).json({ msg: "Invalid credentials." });
 
-    if (!Compare(user.password, password))
+    if (!Compare(password, user.password))
       return res.status(400).json({ msg: "Invalid credentials." });
 
     //return userId and jwt token
@@ -89,18 +107,22 @@ const Login = async (req, res) => {
 };
 
 const ForgotPassword = async (req, res) => {
+  const { email } = req.body;
   try {
-    const user = await User.findOne({ email: req.body.email });
+    const user = await User.findOne({ email: email });
     if (!user)
       return res.status(400).json({
         msg: "Email doesn't exist. Enter the email associated with your account.",
       });
 
     const code = GenarateCode();
-    await Code.deleteMany({ owner: req.body.email });
-    await Code.create({ code: Encrypt(code) });
+    await Code.deleteMany({ owner: email });
+    await Code.create({
+      code: CreateCodeToken({ code, expiresAt: Date.now() + 1800000, email }),
+      owner: email,
+    });
     await SendMail(
-      req.body.email,
+      email,
       "Verify it's you.",
       `Use this to reset your password. ${code} \n This code will expire in 30 minutes. \n If you didn't request for this code, ignore the message, your account is safe.`
     );
@@ -140,6 +162,41 @@ const UpdateUser = async (req, res) => {
   }
 };
 
+const AuthorizeUserPin = async (req, res) => {
+  const { userId, pin: userPin } = req.body;
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: "User not found." });
+
+    if (!Compare(userPin, user.pin))
+      return res.status(400).json({ msg: "Wrong pin. Try again." });
+
+    const { pin, password, ...others } = user._doc;
+    const token = CreateToken(user._id, "15m");
+    return res
+      .status(200)
+      .json({ msg: "Logged in successfully", user: others, token });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
+const AuthorizeUserFinger = async (req, res) => {
+  const { userId } = req.body;
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: "User not found." });
+
+    const { pin, password, ...others } = user._doc;
+    const token = CreateToken(user._id, "15m");
+    return res
+      .status(200)
+      .json({ msg: "Logged in successfully", user: others, token });
+  } catch (error) {
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
 module.exports = {
   InviteUser,
   Register,
@@ -147,4 +204,6 @@ module.exports = {
   ForgotPassword,
   ResetPassword,
   UpdateUser,
+  AuthorizeUserPin,
+  AuthorizeUserFinger,
 };

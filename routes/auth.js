@@ -7,6 +7,8 @@ const {
   ForgotPassword,
   ResetPassword,
   UpdateUser,
+  AuthorizeUserPin,
+  AuthorizeUserFinger,
 } = require("../controllers/auth");
 
 //invite user
@@ -16,5 +18,7 @@ router.post("/login", Login);
 router.post("/forgot", ForgotPassword);
 router.patch("/reset", ResetPassword);
 router.patch("/update/:userId", UpdateUser);
+router.post("/authorize/pin", AuthorizeUserPin);
+router.post("/authorize/finger", AuthorizeUserFinger);
 
 module.exports = router;

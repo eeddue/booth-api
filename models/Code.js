@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const CodeSchema = new mongoose.Schema(
   {
-    code: String,
-    owner: String,
+    code: { type: String, required: true },
+    owner: { type: String, required: true },
   },
   { timestamps: true }
 );

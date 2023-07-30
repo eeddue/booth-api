@@ -5,6 +5,8 @@ const Code = require("../models/Code");
 router.post("/verify", async (req, res) => {
   const { email, code: bodyCode } = req.body;
   try {
+    if (!bodyCode || !email) return res.sendStatus(404);
+
     const code = await Code.findOne({ owner: email });
     if (!code) return res.status(400).json({ msg: "No code found." });
 

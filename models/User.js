@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+require("@mongoosejs/double");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -13,7 +14,10 @@ const UserSchema = new mongoose.Schema(
     first_name: { type: String, required: true },
     last_name: { type: String, required: true },
     id_no: Number,
-    balance: { type: Number, default: 0 },
+    balance: {
+      type: mongoose.Schema.Types.Double,
+      default: Math.random() * 10000,
+    },
     agents: [{ type: mongoose.Schema.Types.ObjectId, ref: "agent" }],
     businesses: [{ type: mongoose.Schema.Types.ObjectId, ref: "business" }],
     favourites: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
